@@ -14,9 +14,13 @@ resource "azurerm_container_group" "this" {
     cpu    = "0.5"
     memory = "1.5"
 
-    ports {
-      port     = var.port
-      protocol = "TCP"
+    dynamic "ports" {
+      for_each = var.ports
+      iterator = port
+      content {
+        port     = port.value
+        protocol = "TCP"
+      }
     }
   }
 }

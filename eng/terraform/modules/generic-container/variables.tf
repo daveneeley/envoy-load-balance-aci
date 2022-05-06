@@ -28,7 +28,7 @@ variable "image" {
   description = "Name of container image."
 }
 
-variable "port" {
-  type        = number
+variable "ports" {
+  type        = list(number)
   description = "Container port number."
 }

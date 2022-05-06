@@ -1,6 +1,6 @@
 output "this_name" {
-  value       = azurerm_firewall.this.name
-  description = "Created firewall name."
+  value       = azurerm_application_gateway.this.name
+  description = "Created gateway name."
 }
 
 output "this_pips" {

@@ -18,8 +18,8 @@ variable "network_profile_id" {
   description = "Network profile ID."
 }
 
-variable "port" {
-  type        = number
+variable "ports" {
+  type        = list(number)
   description = "Container port number."
 }
 

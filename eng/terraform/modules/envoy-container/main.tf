@@ -2,7 +2,7 @@ locals {
   config_file_path = "/etc/proxy.yaml"
   envoy_config = templatefile("${path.module}/config.tmpl", {
     host_record = var.host_record
-    port        = var.port
+    ports       = var.ports
   })
   echo_config_cmd = "echo '${local.envoy_config}' > ${local.config_file_path}"
   envoy_cmd       = "/usr/local/bin/envoy -c ${local.config_file_path}"
@@ -28,9 +28,13 @@ resource "azurerm_container_group" "this" {
       "${local.echo_config_cmd} && ${local.envoy_cmd}"
     ]
 
-    ports {
-      port     = var.port
-      protocol = "TCP"
+    dynamic "ports" {
+      for_each = var.ports
+      iterator = port
+      content {
+        port     = port.value
+        protocol = "TCP"
+      }
     }
   }
 }

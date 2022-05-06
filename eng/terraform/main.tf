@@ -1,6 +1,14 @@
-provider "azurerm" {
-  version = "=2.20.0"
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "azurerm"
+      version = "=2.20.0"
+    }
+  }
+}
 
+
+provider "azurerm" {
   features {}
 }
 
@@ -43,7 +51,7 @@ resource "azurerm_subnet" "internal" {
 }
 
 resource "azurerm_subnet" "external" {
-  name                 = "AzureFirewallSubnet"
+  name                 = "es-${local.deployment_name}"
   resource_group_name  = azurerm_resource_group.this.name
   address_prefixes     = ["10.0.2.0/24"]
   virtual_network_name = azurerm_virtual_network.this.name
@@ -87,7 +95,7 @@ module "generic_container" {
   nodes_count         = 3
   network_profile_id  = azurerm_network_profile.this.id
   image               = "mcr.microsoft.com/azuredocs/aci-helloworld"
-  port                = 80
+  ports               = [80]
 }
 
 # Create node A DNS record
@@ -107,39 +115,24 @@ module "envoy_container" {
   resource_group_name = azurerm_resource_group.this.name
   location            = local.location
   network_profile_id  = azurerm_network_profile.this.id
-  host_record         = "${azurerm_private_dns_a_record.this.fqdn}"
-  port                = 80
+  host_record         = azurerm_private_dns_a_record.this.fqdn
+  ports               = [80]
 }
 
-# Create firewall
-module "firewall" {
-  source = "./modules/firewall"
+# Create appgateway
+module "appgateway" {
+  source = "./modules/appgateway"
 
-  deployment_name     = "${local.deployment_name}"
+  deployment_name     = local.deployment_name
   resource_group_name = azurerm_resource_group.this.name
   location            = local.location
   pips_count          = 1
-  subnet_id           = azurerm_subnet.external.id
-}
-
-# Create firewall rules
-module "netowork_rule" {
-  source = "./modules/network-rule"
-
-  deployment_name     = "${local.deployment_name}"
-  resource_group_name = azurerm_resource_group.this.name
-  firewall_name       = module.firewall.this_name
-  port                = 80
-  ip_addresses        = module.firewall.this_pips
-}
-
-module "nat_rule" {
-  source = "./modules/nat-rule"
-
-  deployment_name      = "${local.deployment_name}"
-  resource_group_name  = azurerm_resource_group.this.name
-  firewall_name        = module.firewall.this_name
-  port                 = 80
-  public_ip_addresses  = module.firewall.this_pips
-  private_ip_addresses = [module.envoy_container.this_ip]
+  frontend_ports = [{
+    port     = 80
+    protocol = "http"
+    }
+  ]
+  subnet_id          = azurerm_subnet.external.id
+  private_subnet_id  = azurerm_subnet.internal.id
+  backend_pool_fqdns = [module.envoy_container.this_ip]
 }
